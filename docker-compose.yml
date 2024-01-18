@@ -44,6 +44,7 @@ services:
       - "--default-authentication-plugin=mysql_native_password"
 
   # LR: Wordpress host would be ${APP_NAME}_database:3306
+  # LR: Delete wp-config.php
 
   wordpress:
     # default port 9000 (FastCGI)
