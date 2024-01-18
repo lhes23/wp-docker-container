@@ -1,0 +1,90 @@
+version: "3.8"
+
+services:
+  nginx:
+    container_name: ${APP_NAME}_nginx
+    build: ./docker/nginx
+    command: nginx -g "daemon off;"
+    links:
+      - php
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/logs:/var/log/nginx
+      - ./wordpress:/var/www/html
+    networks:
+      - network
+  php:
+    container_name: ${APP_NAME}_php
+    build: ./docker/php
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./wordpress:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+    networks:
+      - network
+  db:
+    # default port 3306
+    image: mysql:latest
+    container_name: ${APP_NAME}_database
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - network
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ./database/mysql:/var/lib/mysql
+    command:
+      - "--default-authentication-plugin=mysql_native_password"
+
+  # LR: Wordpress host would be ${APP_NAME}_database:3306
+
+  wordpress:
+    # default port 9000 (FastCGI)
+    image: wordpress:latest
+    container_name: ${APP_NAME}_wordpress
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - network
+    depends_on:
+      - db
+    volumes:
+      - ./wordpress:/var/www/html
+    environment:
+      - WORDPRESS_DB_HOST=${APP_NAME}_database:3306
+      - WORDPRESS_DB_NAME=${MYSQL_DATABASE}
+      - WORDPRESS_DB_USER=${MYSQL_USER}
+      - WORDPRESS_DB_PASSWORD=${MYSQL_PASSWORD}
+
+  phpmyadmin:
+    depends_on:
+      - db
+    image: phpmyadmin
+    container_name: ${APP_NAME}_pma
+    restart: unless-stopped
+    links:
+      - db
+    ports:
+      - "8090:80"
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    networks:
+      - network
+
+#volumes:
+#  wordpress:
+#  dbdata:
+
+networks:
+  network:
+    name: ${APP_NAME}_network
+    driver: bridge
