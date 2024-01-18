@@ -14,6 +14,7 @@ services:
       - ./wordpress:/var/www/html
     networks:
       - network
+
   php:
     container_name: ${APP_NAME}_php
     build: ./docker/php
@@ -24,7 +25,8 @@ services:
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini
     networks:
       - network
-  db:
+
+  database:
     # default port 3306
     image: mysql:latest
     container_name: ${APP_NAME}_database
@@ -50,13 +52,11 @@ services:
     # default port 9000 (FastCGI)
     image: wordpress:latest
     container_name: ${APP_NAME}_wordpress
+    depends_on:
+      - database
     env_file:
       - .env
     restart: unless-stopped
-    networks:
-      - network
-    depends_on:
-      - db
     volumes:
       - ./wordpress:/var/www/html
     environment:
@@ -64,20 +64,20 @@ services:
       - WORDPRESS_DB_NAME="${MYSQL_DATABASE}"
       - WORDPRESS_DB_USER="${MYSQL_USER}"
       - WORDPRESS_DB_PASSWORD="${MYSQL_PASSWORD}"
+    networks:
+      - network
 
   phpmyadmin:
-    depends_on:
-      - db
     image: phpmyadmin
     container_name: ${APP_NAME}_pma
+    depends_on:
+      - database
     restart: unless-stopped
-    links:
-      - db
     ports:
       - "8090:80"
     environment:
-      PMA_HOST: db
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      PMA_HOST: database
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
     networks:
       - network
 
